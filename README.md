@@ -61,27 +61,74 @@ Si la conexion es exitosa, veremos el prompt de SQL:
 
 Intenta correr una query simple para testear:
 
-`SELECT * FROM DUAL;`
+`SELECT * FROM PRODUCTOS;`
 
-### Ejecutemos el archivo SQL de la sesion 1.
+### Wrap up
 
-Estando en la carpeta raiz, primero copiemos el archivo en el contenedor `docker cp sesion1.sql oracle_db_course:/tmp/sesion1.sql`
+Al hacer build del proyecto, en Dockerfile especificamos que debemos copiar el archivo sesion1.sql en la carpeta startup de oracle la cual contien el script que corre en la inicializacion de la base de datos.
 
-Accedemos al contenedor tal como hicimos anteriormente:
+```
+COPY sesion1.sql /opt/oracle/scripts/startup/
+```
+*Se ha modificado sesion1.sql agregando la creacion de la tabla DetallesPedidos y creando bloque PL/SQL para la creacion de las tablas*
 
-`docker-compose exec oracle-db bash`
+Para poder usar esta configuracion, desde nuestro docker-compose especificamos que utilizaremos el Dockerfile para construir nuestra imagen, por lo que ahora especificamos en Dockerfile la imagen que vamos a utilizar.
 
-Nos conectamos a la base de datos:
+```
+#En dockerfile
+FROM container-registry.oracle.com/database/express:21.3.0-xe
 
-`sqlplus sys/oracle@//localhost:1521/XE as sysdba`
+```
 
-Y ejecutamos el script desde la carpeta `tmp` ejecutando:
+```
+#En docker-compose
+  oracle-db:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      ...
+```
+Ahora, cada vez que levantemos el contenedor, vamos a intentar correr script1.sql.
+La primera vez correra bien, pero las siguientes veces intentará crear tuplas con ids que ya existen asi que fallará al insertar tuplas.
 
-`@/tmp/sesion1.sql`
 
-Con esto, hemos ejecutado el punto 1 de la actividad practica de la sesion 1.1 (Diapositiva 21).
+### Problemas Comunes:
 
-**Termine la actividad practica de la sesion 1.1 y la sesion 2.**
+## Error KeyError: 'ContainerConfig'
 
+Este error puede ocurrir por multiples razones:
 
+* Incompatibilidad entre versiones de Docker Compose y Docker Engine
+* Corrupción de Metadatos del Contenedor o Imagen
+* Corrupción de Metadatos del Contenedor o Imagen
+* Reconstrucción Innecesaria con --build
 
+Una de las formas de solucionarlos es eliminando las imagenes, contenedores, redes y volumenes que no estan siendo usados con `docker system prune`. Esto incluye la imagen base container-registry.oracle.com/database/express:21.3.0-xe, que es grande y tarda mucho en descargarse. Si hacemos el `prune`, al intentar levantar el servidor nuevamente, tendremos que descargar la imagen nuevamente.
+
+Podemos intentar:
+* Levantar el entorno sin eliminar la imagen ni reconstruir: `docker-compose up`. Deberiamos reconstruir (`--build`) **solo si modificamos dockerfile o docker-compose**
+* Limpiar el entorno sin eliminar la imagen: `docker-compose down -v`
+
+## ERROR: An HTTP request took too long to complete.
+
+Este error ocurre si una operación con Docker toma demasiado tiempo (por ejemplo, debido a una red lenta o recursos insuficientes). Para solucionarlo aumenta el tiempo de espera de Docker Compose:
+
+```
+export COMPOSE_HTTP_TIMEOUT=120
+docker-compose up
+```
+
+Si el problema persiste, verifica si un firewall o antivirus está interfiriendo. Desactiva temporalmente el firewall:
+
+```
+sudo ufw disable
+docker-compose up
+```
+
+Si funciona, ajusta las reglas del firewall y vuelve a habilitarlo:
+
+```
+sudo ufw allow 2375/tcp
+sudo ufw allow 2376/tcp
+sudo ufw enable
+```
