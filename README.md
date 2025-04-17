@@ -133,7 +133,7 @@ sudo ufw allow 2376/tcp
 sudo ufw enable
 ```
 
-## Tras conectarnos, las tablas pareciera ser que no se han creado.
+## Tras conectarnos, pareciera ser que no se han creado las tablas.
 
 Si nos conectamos a la bd mediante el script entregado anteriormente: `sqlplus sys/oracle@//localhost:1521/XE as sysdba`, nos estaremos conectando por defecto a la base de datos Root de Oracle. Por otro lado, si nos fijamos en nuestro script ejecutado al iniciar el container, estamos:
 
